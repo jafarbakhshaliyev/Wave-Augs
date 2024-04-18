@@ -64,8 +64,8 @@ class augmentation():
       coeffs = pywt.wavedec(xy[:,:, col], wavelet = wavelet, mode='symmetric', level=level)
       S = []
       for i in range(level + 1):
-        coeffs_tensor = torch.FloatTensor(coeffs[i])  # Convert to a PyTorch tensor
-        m = coeffs_tensor.uniform_() < torch.FloatTensor(rates[i])
+        coeffs_tensor = torch.FloatTensor(coeffs[i])  
+        m = coeffs_tensor.uniform_() < rates[i]
         
         C = coeffs_tensor.masked_fill(m, 0)
         S.append(C.numpy())
@@ -85,9 +85,9 @@ class augmentation():
         coeffs_1 = pywt.wavedec(xy[:,:, col], wavelet = wavelet, mode='symmetric', level=level)
         coeffs_2 = pywt.wavedec(xy2[:,:, col], wavelet = wavelet, mode='symmetric', level=level)
         for i in range(level + 1):
-          coeffs_tensor_1 = torch.FloatTensor(coeffs_1[i])  # Convert to a PyTorch tensor
-          coeffs_tensor_2 = torch.FloatTensor(coeffs_2[i])  # Convert to a PyTorch tensor
-          m1 = coeffs_tensor_1.uniform_() < torch.FloatTensor(rates[i])
+          coeffs_tensor_1 = torch.FloatTensor(coeffs_1[i]) 
+          coeffs_tensor_2 = torch.FloatTensor(coeffs_2[i])  
+          m1 = coeffs_tensor_1.uniform_() < rates[i]
           m2 = torch.bitwise_not(m1)
           C1 = coeffs_tensor_1.masked_fill(m1, 0)
           C2 = coeffs_tensor_2.masked_fill(m2, 0)
