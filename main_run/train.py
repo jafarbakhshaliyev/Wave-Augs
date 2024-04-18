@@ -59,8 +59,7 @@ TYPES = {0: 'Original',
          4: 'Wave-Mask',
          5: 'Wave-Mix',
          6: 'Wave-MixUp',
-         7: 'StAug', 
-         11: 'TimeGAN'}
+         7: 'StAug'}
 
 class Exp_Main(Exp_Basic):
 
