@@ -89,43 +89,6 @@ def test_params_flop(model,x_shape):
         print('{:<30}  {:<8}'.format('Computational complexity: ', macs))
         print('{:<30}  {:<8}'.format('Number of parameters: ', params))
 
-def real_data_loading(data: np.array, seq_len):
-    """Load and preprocess real-world datasets.
-    Args:
-      - data_name: Numpy array with the values from a a Dataset
-      - seq_len: sequence length
-
-    Returns:
-      - data: preprocessed data.
-    """
-    # Flip the data to make chronological data
-    ori_data = data
-    # Normalize the data
-    scaler = StandardScaler().fit(ori_data)
-    ori_data = scaler.transform(ori_data)
-
-    # Preprocess the dataset
-    temp_data = []
-    # Cut data by sequence length
-    for i in range(0, len(ori_data) - seq_len):
-        _x = ori_data[i:i + seq_len]
-        temp_data.append(_x)
-
-
-    data = []
-    for i in range(len(temp_data)):
-        data.append(temp_data[i])
-    return data
-
-
-def inverse_real_data_loading(data, ori_data, seq_len):
-    temp_lst = []
-    timesteps = len(ori_data)-seq_len
-    for i in range(0, timesteps, seq_len):
-      temp_lst.append(data[i])
-    if timesteps%seq_len != 0: temp_lst.append(data[-1][-timesteps%seq_len+1:])
-    reconstructed_data = np.concatenate(temp_lst)
-    return reconstructed_data
 
 
 
