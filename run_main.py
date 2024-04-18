@@ -6,10 +6,10 @@ from main_run.train import Exp_Main
 import random
 import numpy as np
 
-#fix_seed = 2023
-#random.seed(fix_seed)
-#torch.manual_seed(fix_seed)
-#np.random.seed(fix_seed)
+fix_seed = 2024
+random.seed(fix_seed)
+torch.manual_seed(fix_seed)
+np.random.seed(fix_seed)
 
 TYPES = {0: 'Original',
          1: 'Gaussian',
@@ -18,8 +18,7 @@ TYPES = {0: 'Original',
          4: 'Wave-Mask',
          5: 'Wave-Mix',
          6: 'Wave-MixUp',
-         7: 'StAug', 
-         11: 'TimeGAN'}
+         7: 'StAug'}
 
 
 parser = argparse.ArgumentParser(description='Augmentations for Time Series Forecasting')
@@ -40,7 +39,6 @@ parser.add_argument('--freq', type=str, default='h',
                     help='freq for time features encoding, options:[s:secondly, t:minutely, h:hourly, d:daily, b:business days, w:weekly, m:monthly], you can also use more detailed freq like 15min or 3h')
 parser.add_argument('--checkpoints', type=str, default='./checkpoints/', help='location of model checkpoints')
 parser.add_argument('--percentage', type=int, default=100, help='percentage of train data')
-
 parser.add_argument('--patience', type=int, default=12, help='early stopping patience')
 # forecasting task 
 parser.add_argument('--seq_len', type=int, default=336, help='input sequence length')
@@ -80,12 +78,6 @@ parser.add_argument('--rates', type=str, default="[0.2, 0.1, 0.1, 0.1, 0.1, 0.1,
 parser.add_argument('--nIMF', type=int, default=500, help='number of IMFs for EMD')
 parser.add_argument('--mask_rate', type=float, default=0.5, help='mask rate for all augmentations')
 
-# GAN
-parser.add_argument('--hidden_dim', type=int, default=24, help='level for DWT')
-parser.add_argument('--num_layer', type=int, default=3, help='level for DWT')
-parser.add_argument('--iterations', type=int, default=100, help='level for DWT')
-parser.add_argument('--batch_sizeg', type=int, default=64, help='level for DWT')
-parser.add_argument('--module', type=str, default='gru', help='wavelet form for DWT')
 
 
 
