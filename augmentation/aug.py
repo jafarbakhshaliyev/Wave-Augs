@@ -6,16 +6,38 @@ from decompositions.decomposition import emd_augment
 
 class augmentation():
 
+  """
+    A class for data augmentation techniques used for Time Series Forecasting.
+
+    Attributes:
+    None
+
+    Methods:
+    - freq_mask: Apply frequency masking to input data.
+    - freq_mix: Mix two input signals in the frequency domain.
+    - wave_mask: Apply wavelet-based masking to input data.
+    - wave_mix: Mix two input signals using wavelet transformation.
+    - emd_aug: Apply empirical mode decomposition (EMD) based augmentation.
+    - mix_aug: Mix two batches of data with a random interpolation factor.
+    """
+
   def __init__(self):
         pass
 
-  def add_noise(self, x, rate = 0.5, noise_level = 0.1):
-    m = torch.FloatTensor(x.shape).uniform_() < rate
-    noise = torch.randn(x.shape)
-    noise_applied = x + noise_level * noise
-    return torch.where(m, noise_applied, x)
-
   def freq_mask(self, x, y, rate=0.5, dim=1):
+    """
+        Apply frequency masking to input data.
+
+        Args:
+        - x (torch.Tensor): Look-back window.
+        - y (torch.Tensor): Target horizon.
+        - rate (float): Mask rate.
+        - dim (int): Dimension along to concatenate and apply Fourier Transform.
+
+        Returns:
+        - torch.Tensor: Masked synthetic data tensor.
+    """
+
     xy = torch.cat([x,y],dim=1)
     xy_f = torch.fft.rfft(xy,dim=dim)
     m = torch.FloatTensor(xy_f.shape).uniform_() < rate
@@ -26,6 +48,18 @@ class augmentation():
     return xy
 
   def freq_mix(self, x, y, rate=0.5, dim=1):
+    """
+        Mix two input signals in the frequency domain.
+
+        Args:
+        - x (torch.Tensor): Look-back window.
+        - y (torch.Tensor): Target horizon.
+        - rate (float): Mix rate.
+        - dim (int): Dimension along to concatenate and apply Fourier Transform.
+
+        Returns:
+        - torch.Tensor: Mixed synthetic data tensor.
+    """
 
     xy = torch.cat([x,y],dim=dim)
     xy_f = torch.fft.rfft(xy,dim=dim)
@@ -58,6 +92,21 @@ class augmentation():
     return xy
 
   def wave_mask(self, x, y, rates, wavelet = 'db1', level = 2, dim = 1):
+    """
+        Apply wavelet-based masking to input data.
+
+        Args:
+        - x (torch.Tensor): Look-back window.
+        - y (torch.Tensor): Target horizon.
+        - rates (list of floats): List of mask rates for each wavelet level.
+        - wavelet (str): Type of wavelet to use.
+        - level (int): Number of decomposition levels.
+        - dim (int): Dimension along to concatenate and apply Discrete Wavelet Transform.
+
+        Returns:
+        - torch.Tensor: Masked synthetic data tensor.
+    """
+
     xy = torch.cat([x,y],dim=1)
     s_list = []
     for col in range(xy.shape[-1]):
@@ -66,7 +115,6 @@ class augmentation():
       for i in range(level + 1):
         coeffs_tensor = torch.FloatTensor(coeffs[i])  
         m = coeffs_tensor.uniform_() < rates[i]
-        
         C = coeffs_tensor.masked_fill(m, 0)
         S.append(C.numpy())
       s = pywt.waverec(S, wavelet = wavelet, mode='symmetric')
@@ -74,6 +122,21 @@ class augmentation():
     return torch.cat(s_list, dim=-1)
 
   def wave_mix(self, x, y, rates, wavelet = 'db1', level = 2, dim = 1):
+      """
+        Mix two input signals using wavelet transformation.
+
+        Args:
+        - x (torch.Tensor): Look-back window.
+        - y (torch.Tensor): Target horizon.
+        - rates (list of floats): List of mix rates for each wavelet level.
+        - wavelet (str): Type of wavelet to use.
+        - level (int): Number of decomposition levels.
+        - dim (int): Dimension along to concatenate and apply Discrete Wavelet Transform.
+
+        Returns:
+        - torch.Tensor: Mixed synthetic data tensor.
+      """
+
       xy = torch.cat([x,y], dim = 1)
       b_idx = np.arange(x.shape[0])
       np.random.shuffle(b_idx)
@@ -97,29 +160,17 @@ class augmentation():
         s_list.append(torch.from_numpy(s[:, :, None]))
       return torch.cat(s_list, dim=-1)
 
-  def wave_mixup_wb(self, x, y, alphas, wavelet = 'db1', level = 2, dim = 1):
-
-    xy = torch.cat([x,y], dim = 1)
-    b_idx = np.arange(x.shape[0])
-    np.random.shuffle(b_idx)
-    x2 = x[b_idx]
-    y2 = y[b_idx]
-    xy2 = torch.cat([x2, y2], dim=dim)
-    s_list = []
-    for col in range(xy.shape[-1]):
-      S = []
-      coeffs_1 = pywt.wavedec(xy[:,:, col], wavelet = wavelet, mode='symmetric', level=level)
-      coeffs_2 = pywt.wavedec(xy2[:,:, col], wavelet = wavelet, mode='symmetric', level=level)
-      for i in range(level + 1):
-        alpha = alphas[i]
-        C = (1-alpha)*coeffs_1[i] + alpha*coeffs_2[i]
-        S.append(C)
-      s = pywt.waverec(S, wavelet = wavelet, mode='symmetric')
-      s_list.append(torch.from_numpy(s[:, :, None]))
-    return torch.cat(s_list, dim=-1)
-
   # StAug: frequency-domain augmentation 
   def emd_aug(self, x):
+      """
+        Apply augmentation on empirical mode decomposition (EMD).
+
+        Args:
+        - x (torch.Tensor): Input tensor.
+
+        Returns:
+        - torch.Tensor: Augmented tensor.
+      """
 
       b,n_imf,t,c = x.size()
       inp = x.permute(0,2,1,3).reshape(b,t,n_imf*c) #b,t,n_imf,c -> b,t,n_imf*c
@@ -135,6 +186,17 @@ class augmentation():
 
 # StAug: time-domain augmentation
   def mix_aug(self, batch_x, batch_y, lambd = 0.5):
+      """
+        Mix two batches of data with a random interpolation factor.
+
+        Args:
+        - batch_x (numpy.ndarray): Input batch 1.
+        - batch_y (numpy.ndarray): Input batch 2.
+        - lambd (float): Beta distribution parameter for interpolation.
+
+        Returns:
+        - numpy.ndarray: Mixed augmented batches.
+      """
 
       inds2 = np.random.permutation(len(batch_x))
       lam = np.random.beta(lambd, lambd)
