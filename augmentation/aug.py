@@ -1,3 +1,12 @@
+# =============================================================================
+# The freq_mask, freq_mix methods are adapted from the following sources:
+#  Chen, M., Xu, Z., Zeng, A., & Xu, Q. (2023). "FrAug: Frequency Domain Augmentation for Time Series Forecasting".
+#  arXiv preprint arXiv:2302.09292.
+#
+# The emd_aug and mix_aug for STAug method are adapted from the following source:
+#  https://github.com/xiyuanzh/STAug/tree/main
+# =============================================================================
+
 import numpy as np
 import torch
 import pywt

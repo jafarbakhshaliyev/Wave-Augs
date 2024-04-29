@@ -1,5 +1,6 @@
 .DS_Store
 .ipynb_checkpoints
 *.pyc
-__pycache__/
 __pycache__
+*.zip
+*.pkl

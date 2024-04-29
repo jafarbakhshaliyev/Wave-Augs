@@ -1,3 +1,9 @@
+# =============================================================================
+# The code is originated from
+# Chen, M., Xu, Z., Zeng, A., & Xu, Q. (2023). "FrAug: Frequency Domain Augmentation for Time Series Forecasting".
+# arXiv preprint arXiv:2302.09292.
+# =============================================================================
+
 import os
 import torch
 import torch.nn.functional as F
@@ -53,13 +59,11 @@ class Exp_Basic(object):
 warnings.filterwarnings('ignore')
 
 TYPES = {0: 'Original',
-         1: 'Gaussian',
-         2: 'Freq-Mask',
-         3: 'Freq-Mix',
-         4: 'Wave-Mask',
-         5: 'Wave-Mix',
-         6: 'Wave-MixUp',
-         7: 'StAug'}
+         1: 'Freq-Mask',
+         2: 'Freq-Mix',
+         3: 'Wave-Mask',
+         4: 'Wave-Mix',
+         5: 'StAug'}
 
 class Exp_Main(Exp_Basic):
 
@@ -87,7 +91,6 @@ class Exp_Main(Exp_Basic):
     def _select_criterion(self):
         criterion = nn.MSELoss()
         return criterion
-
 
     def vali(self, vali_data, vali_loader, criterion):
 
@@ -146,60 +149,48 @@ class Exp_Main(Exp_Basic):
 
                 if self.args.aug_type:
                   aug = augmentation()
-                  if self.args.aug_type == 1: batch_x = aug.add_noise(batch_x, rate = self.args.aug_rate, noise_level = self.args.noise_level)
-                  elif self.args.aug_type == 2:
+                  if self.args.aug_type == 1:
                     xy = aug.freq_mask(batch_x, batch_y[:, -self.args.pred_len:, :], rate=self.args.aug_rate, dim=1)
                     batch_x2, batch_y2 = xy[:, :self.args.seq_len, :], xy[:, -self.args.label_len-self.args.pred_len:, :]
                     batch_x = torch.cat([batch_x,batch_x2],dim=0)
                     batch_y = torch.cat([batch_y,batch_y2],dim=0)
-                  elif self.args.aug_type  == 3:
+                  elif self.args.aug_type  == 2:
                     xy = aug.freq_mix(batch_x, batch_y[:, -self.args.pred_len:, :], rate=self.args.aug_rate, dim=1)
                     batch_x2, batch_y2 = xy[:, :self.args.seq_len, :], xy[:, -self.args.label_len-self.args.pred_len:, :]
                     batch_x = torch.cat([batch_x,batch_x2],dim=0)
                     batch_y = torch.cat([batch_y,batch_y2],dim=0)
-                  elif self.args.aug_type == 4:
+                  elif self.args.aug_type == 3:
                     xy = aug.wave_mask(batch_x, batch_y[:, -self.args.pred_len:, :] ,rates = self.args.rates, wavelet =self.args.wavelet, level = self.args.level, dim = 1)
                     batch_x2, batch_y2 = xy[:, :self.args.seq_len, :], xy[:, -self.args.label_len-self.args.pred_len:, :]
-                    mask_steps = int(batch_x2.shape[0] * self.args.mask_rate)
-                    indices = torch.randperm(batch_x2.shape[0])[:mask_steps]
+                    sampling_steps = int(batch_x2.shape[0] * self.args.sampling_rate)
+                    indices = torch.randperm(batch_x2.shape[0])[:sampling_steps]
+                    batch_x2 = batch_x2[indices,:,:]
+                    batch_y2 = batch_y2[indices,:,:]
+                    batch_x = torch.cat([batch_x,batch_x2],dim=0)
+                    batch_y = torch.cat([batch_y,batch_y2],dim=0)
+                  elif self.args.aug_type == 4:
+                    xy = aug.wave_mix(batch_x, batch_y[:, -self.args.pred_len:, :] ,rates = self.args.rates, wavelet = self.args.wavelet, level = self.args.level, dim = 1)
+                    batch_x2, batch_y2 = xy[:, :self.args.seq_len, :], xy[:, -self.args.label_len-self.args.pred_len:, :]
+                    sampling_steps = int(batch_x2.shape[0] * self.args.sampling_rate)
+                    indices = torch.randperm(batch_x2.shape[0])[:sampling_steps]
                     batch_x2 = batch_x2[indices,:,:]
                     batch_y2 = batch_y2[indices,:,:]
                     batch_x = torch.cat([batch_x,batch_x2],dim=0)
                     batch_y = torch.cat([batch_y,batch_y2],dim=0)
                   elif self.args.aug_type == 5:
-                    xy = aug.wave_mix(batch_x, batch_y[:, -self.args.pred_len:, :] ,rates = self.args.rates, wavelet = self.args.wavelet, level = self.args.level, dim = 1)
-                    batch_x2, batch_y2 = xy[:, :self.args.seq_len, :], xy[:, -self.args.label_len-self.args.pred_len:, :]
-                    mask_steps = int(batch_x2.shape[0] * self.args.mask_rate)
-                    indices = torch.randperm(batch_x2.shape[0])[:mask_steps]
-                    batch_x2 = batch_x2[indices,:,:]
-                    batch_y2 = batch_y2[indices,:,:]
-                    batch_x = torch.cat([batch_x,batch_x2],dim=0)
-                    batch_y = torch.cat([batch_y,batch_y2],dim=0)
-                  elif self.args.aug_type== 6:
-                    xy = aug.wave_mixup_wb(batch_x, batch_y[:, -self.args.pred_len:, :] ,alphas = self.args.rates, wavelet = self.args.wavelet, level = self.args.level, dim = 1)
-                    batch_x2, batch_y2 = xy[:, :self.args.seq_len, :], xy[:, -self.args.label_len-self.args.pred_len:, :]
-                    batch_x = torch.cat([batch_x,batch_x2],dim=0)
-                    batch_y = torch.cat([batch_y,batch_y2],dim=0)
-                  elif self.args.aug_type == 7:
                     weighted_xy = aug.emd_aug(aug_data)
                     weighted_x, weighted_y = weighted_xy[:,:self.args.seq_len,:], weighted_xy[:,-self.args.label_len-self.args.pred_len:,:]
                     batch_x, batch_y = aug.mix_aug(weighted_x, weighted_y, lambd = self.args.aug_rate)
-                  elif self.args.aug_type == 11:
-                    batch_x2, batch_y2 = aug_data[:,:self.args.seq_len,:], aug_data[:,-self.args.label_len-self.args.pred_len:,:]
-                    batch_x = torch.cat([batch_x,batch_x2],dim=0)
-                    batch_y = torch.cat([batch_y,batch_y2],dim=0)
                      
 
                 batch_x = batch_x.float().to(self.device)
                 batch_y = batch_y.float().to(self.device)
 
-
                 outputs = self.model(batch_x)
 
-
                 f_dim = -1 if self.args.features == 'MS' else 0
-                outputs = outputs[:, -self.args.pred_len:, f_dim:] #pred_len
-                batch_y = batch_y[:, -self.args.pred_len:, f_dim:].to(self.device) #pred_len
+                outputs = outputs[:, -self.args.pred_len:, f_dim:] 
+                batch_y = batch_y[:, -self.args.pred_len:, f_dim:].to(self.device) 
                 loss = criterion(outputs, batch_y)
                 train_loss.append(loss.item())
 
@@ -210,7 +201,6 @@ class Exp_Main(Exp_Basic):
                     print('\tspeed: {:.4f}s/iter; left time: {:.4f}s'.format(speed, left_time))
                     iter_count = 0
                     time_now = time.time()
-
 
                 loss.backward()
                 model_optim.step()
@@ -247,7 +237,6 @@ class Exp_Main(Exp_Basic):
         trues = []
         inputx = []
         
-
         self.model.eval()
         with torch.no_grad():
             for i, (batch_x, batch_y, _) in enumerate(test_loader):
@@ -262,21 +251,17 @@ class Exp_Main(Exp_Basic):
                 outputs = outputs.detach().cpu().numpy()
                 batch_y = batch_y.detach().cpu().numpy()
 
-                pred = outputs  # outputs.detach().cpu().numpy()  # .squeeze()
-                true = batch_y  # batch_y.detach().cpu().numpy()  # .squeeze()
+                pred = outputs  #
+                true = batch_y  
 
                 preds.append(pred)
                 trues.append(true)
                 inputx.append(batch_x.detach().cpu().numpy())
-                if i % 20 == 0:
-                    input = batch_x.detach().cpu().numpy()
-                    gt = np.concatenate((input[0, :, -1], true[0, :, -1]), axis=0)
-                    pd = np.concatenate((input[0, :, -1], pred[0, :, -1]), axis=0)
                     
-
         if self.args.test_flop:
             test_params_flop((batch_x.shape[1],batch_x.shape[2]))
             exit()
+
         preds = np.array(preds)
         trues = np.array(trues)
         inputx = np.array(inputx)
@@ -285,10 +270,9 @@ class Exp_Main(Exp_Basic):
         trues = trues.reshape(-1, trues.shape[-2], trues.shape[-1])
         inputx = inputx.reshape(-1, inputx.shape[-2], inputx.shape[-1])
 
-
         mae, mse, rmse, mape, mspe, rse, corr = metric(preds, trues)
         print('mse:{}, mae:{}, rse:{}, corr:{}'.format(mse, mae, rse, corr))
-        f = open("result-all" + self.args.des + self.args.data + ".txt", 'a')
+        f = open(self.args.des + self.args.data + ".txt", 'a')
         f.write(" \n")
         f.write('{} --- Pred {} -> mse:{}, mae:{}, rse:{}'.format(TYPES[self.args.aug_type], self.args.pred_len, mse, mae, rse))
         f.write('\n')

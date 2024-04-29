@@ -1,3 +1,8 @@
+# =============================================================================
+# The code is originated from
+# https://github.com/xiyuanzh/STAug/tree/main
+# =============================================================================
+
 import numpy as np
 from PyEMD import EMD
 

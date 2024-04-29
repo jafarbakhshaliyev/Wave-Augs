@@ -1,3 +1,9 @@
+# =============================================================================
+# The code is originated from
+# Chen, M., Xu, Z., Zeng, A., & Xu, Q. (2023). "FrAug: Frequency Domain Augmentation for Time Series Forecasting".
+# arXiv preprint arXiv:2302.09292.
+# =============================================================================
+
 import argparse
 import os
 import ast
@@ -12,13 +18,11 @@ torch.manual_seed(fix_seed)
 np.random.seed(fix_seed)
 
 TYPES = {0: 'Original',
-         1: 'Gaussian',
-         2: 'Freq-Mask',
-         3: 'Freq-Mix',
-         4: 'Wave-Mask',
-         5: 'Wave-Mix',
-         6: 'Wave-MixUp',
-         7: 'StAug'}
+         1: 'Freq-Mask',
+         2: 'Freq-Mix',
+         3: 'Wave-Mask',
+         4: 'Wave-Mix',
+         5: 'StAug'}
 
 
 parser = argparse.ArgumentParser(description='Augmentations for Time Series Forecasting')
@@ -30,7 +34,7 @@ parser.add_argument('--model', type=str, required=True, default='DLinear',
 # data loader 
 parser.add_argument('--is_training', type=int, required=True, default=1, help='status')
 parser.add_argument('--data', type=str, required=True, default='ETTh1', help='dataset type')
-parser.add_argument('--root_path', type=str, default='./data/ETT/', help='root path of the data file')
+parser.add_argument('--root_path', type=str, default='../dataset/', help='root path of the data file')
 parser.add_argument('--data_path', type=str, default='ETTh1.csv', help='data file')
 parser.add_argument('--features', type=str, default='M',
                     help='forecasting task, options:[M, S, MS]; M:multivariate predict multivariate, S:univariate predict univariate, MS:multivariate predict univariate')
@@ -38,8 +42,9 @@ parser.add_argument('--target', type=str, default='OT', help='target feature in 
 parser.add_argument('--freq', type=str, default='h',
                     help='freq for time features encoding, options:[s:secondly, t:minutely, h:hourly, d:daily, b:business days, w:weekly, m:monthly], you can also use more detailed freq like 15min or 3h')
 parser.add_argument('--checkpoints', type=str, default='./checkpoints/', help='location of model checkpoints')
-parser.add_argument('--percentage', type=int, default=100, help='percentage of train data')
+parser.add_argument('--percentage', type=int, default=100, help='percentage of train data as a downsampling ratio')
 parser.add_argument('--patience', type=int, default=12, help='early stopping patience')
+
 # forecasting task 
 parser.add_argument('--seq_len', type=int, default=336, help='input sequence length')
 parser.add_argument('--label_len', type=int, default=0, help='start token length')
@@ -54,7 +59,7 @@ parser.add_argument('--enc_in', type=int, default=7, help='encoder input size') 
 parser.add_argument('--num_workers', type=int, default=10, help='data loader num workers')
 parser.add_argument('--itr', type=int, default=2, help='experiments times')
 parser.add_argument('--train_epochs', type=int, default=30, help='train epochs')
-parser.add_argument('--batch_size', type=int, default=32, help='batch size of train input data')
+parser.add_argument('--batch_size', type=int, default=64, help='batch size of train input data')
 parser.add_argument('--learning_rate', type=float, default=0.0001, help='optimizer learning rate')
 parser.add_argument('--des', type=str, default='test', help='exp description')
 parser.add_argument('--lradj', type=str, default='type1', help='adjust learning rate')
@@ -68,15 +73,14 @@ parser.add_argument('--devices', type=str, default='0,1,2,3', help='device ids o
 parser.add_argument('--test_flop', action='store_true', default=False, help='See utils/tools for usage')
 
 # Augmentation
-parser.add_argument('--aug_type', type=int, default=0, help='0: No augmentation, 1: Gaussian Noise, 2: Frequency Masking 3: Frequency Mixing  4: Wave Masking  5: Wave Mixing  6: Wave MixUp   7: StAug ')
-parser.add_argument('--aug_rate', type=float, default=0.5, help='rate for all augmentations')
-parser.add_argument('--noise_level', type=float, default=0.5, help='noise level for Gaussian')
+parser.add_argument('--aug_type', type=int, default=0, help='0: No augmentation, 1: Frequency Masking 2: Frequency Mixing  3: Wave Masking  4: Wave Mixing 5: StAug ')
+parser.add_argument('--aug_rate', type=float, default=0.5, help='rate for FreqMask, FreqMix, and STAug')
 parser.add_argument('--wavelet', type=str, default='db2', help='wavelet form for DWT')
 parser.add_argument('--level', type=int, default=2, help='level for DWT')
 parser.add_argument('--rates', type=str, default="[0.2, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1]",
-                        help='List of rates as a string, e.g., "[0.2, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1]"')
-parser.add_argument('--nIMF', type=int, default=500, help='number of IMFs for EMD')
-parser.add_argument('--mask_rate', type=float, default=0.5, help='mask rate for all augmentations')
+                        help='List of float rates as a string, e.g., "[0.2, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1]"')
+parser.add_argument('--nIMF', type=int, default=500, help='number of IMFs for EMD (STAug)')
+parser.add_argument('--sampling_rate', type=float, default=0.5, help='sampling rate for WaveMask and WaveMix')
 
 
 
@@ -108,7 +112,7 @@ if args.is_training:
             args.seq_len,
             args.label_len,
             args.pred_len,
-            args.des, args.aug_type,args.percentage, ii)
+            args.des, args.aug_type, args.percentage, ii)
 
         exp = Exp(args)  # set experiments
         print('>>>>>>>start training : {}>>>>>>>>>>>>>>>>>>>>>>>>>>'.format(setting))
@@ -120,11 +124,11 @@ if args.is_training:
         mae_avg[ii] = mae
         rse_avg[ii] = rse
 
-    f = open("result-all-" + args.des + args.data + ".txt", 'a')
+    f = open("result-" + args.des + args.data + ".txt", 'a')
     f.write('\n')
     f.write('\n')
     f.write("-------START FROM HERE-----")
-    f.write("avg_" + TYPES[args.aug_type] + "  \n")
+    f.write(TYPES[args.aug_type] + "  \n")
     f.write('avg mse:{}, avg mae:{} avg rse:{}  std mse:{}, std mae:{} std rse:{}'.format(mse_avg.mean(), mae_avg.mean(), rse_avg.mean(), mse_avg.std(), mae_avg.std(), rse_avg.std()))
     f.write('\n')
     f.write('\n')
