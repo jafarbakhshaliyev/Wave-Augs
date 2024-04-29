@@ -58,7 +58,7 @@ class Exp_Basic(object):
 
 warnings.filterwarnings('ignore')
 
-TYPES = {0: 'Original',
+TYPES = {0: 'None',
          1: 'Freq-Mask',
          2: 'Freq-Mix',
          3: 'Wave-Mask',

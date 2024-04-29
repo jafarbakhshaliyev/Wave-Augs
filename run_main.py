@@ -17,7 +17,7 @@ random.seed(fix_seed)
 torch.manual_seed(fix_seed)
 np.random.seed(fix_seed)
 
-TYPES = {0: 'Original',
+TYPES = {0: 'None',
          1: 'Freq-Mask',
          2: 'Freq-Mix',
          3: 'Wave-Mask',
