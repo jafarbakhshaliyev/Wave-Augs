@@ -1,4 +1,3 @@
-#!/bin/bash
 
 if [ ! -d "./logs" ]; then
     mkdir ./logs
@@ -17,7 +16,7 @@ model_name=DLinear
 # aug 2: Frequency Mixing
 # aug 3: Wave Masking
 # aug 4: Wave Mixing
-# aug 5: StAug
+# aug 5: STAug
 
 pred_lens=(96 192 336 720)
 
