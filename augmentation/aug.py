@@ -10,8 +10,7 @@
 import numpy as np
 import torch
 import pywt
-from torch.distributions import uniform, beta
-from decompositions.decomposition import emd_augment
+from typing import List, Tuple
 
 class augmentation():
 
@@ -33,7 +32,8 @@ class augmentation():
   def __init__(self):
         pass
 
-  def freq_mask(self, x, y, rate=0.5, dim=1):
+  @staticmethod
+  def freq_mask(x: torch.Tensor, y: torch.Tensor, rate: float = 0.5, dim: int = 1) -> torch.Tensor:
     """
         Apply frequency masking to input data.
 
@@ -55,8 +55,9 @@ class augmentation():
     xy_f = torch.complex(freal,fimag)
     xy = torch.fft.irfft(xy_f,dim=dim)
     return xy
-
-  def freq_mix(self, x, y, rate=0.5, dim=1):
+  
+  @staticmethod
+  def freq_mix(x: torch.Tensor, y: torch.Tensor, rate: float = 0.5, dim: int = 1) -> torch.Tensor:
     """
         Mix two input signals in the frequency domain.
 
@@ -100,7 +101,8 @@ class augmentation():
 
     return xy
 
-  def wave_mask(self, x, y, rates, wavelet = 'db1', level = 2, dim = 1):
+  @staticmethod
+  def wave_mask(x: torch.Tensor, y: torch.Tensor, rates: List[float], wavelet: str = 'db1', level: int = 2, dim: int= 1) -> torch.Tensor:
     """
         Apply wavelet-based masking to input data.
 
@@ -117,20 +119,22 @@ class augmentation():
     """
 
     xy = torch.cat([x,y],dim=1)
-    s_list = []
-    for col in range(xy.shape[-1]):
-      coeffs = pywt.wavedec(xy[:,:, col], wavelet = wavelet, mode='symmetric', level=level)
-      S = []
-      for i in range(level + 1):
-        coeffs_tensor = torch.FloatTensor(coeffs[i])  
-        m = coeffs_tensor.uniform_() < rates[i]
-        C = coeffs_tensor.masked_fill(m, 0)
-        S.append(C.numpy())
-      s = pywt.waverec(S, wavelet = wavelet, mode='symmetric')
-      s_list.append(torch.from_numpy(s[:, :, None]))
-    return torch.cat(s_list, dim=-1)
+    batch_size, seq_len, num_features = xy.shape
+    s_mask = torch.empty((batch_size, seq_len, num_features), dtype=torch.float32)
 
-  def wave_mix(self, x, y, rates, wavelet = 'db1', level = 2, dim = 1):
+    for col in range(num_features):
+      coeffs = pywt.wavedec(xy[:,:, col], wavelet = wavelet, mode='symmetric', level=level)
+      coeffs_tensors = [torch.FloatTensor(c) for c in coeffs]
+      masks = [torch.rand(c.shape) < rate for c, rate in zip(coeffs_tensors, rates)]
+      masked_coeffs = [c.masked_fill(m, 0) for c, m in zip(coeffs_tensors, masks)]
+      S = [c.numpy() for c in masked_coeffs]
+      s = pywt.waverec(S, wavelet=wavelet, mode='symmetric')
+      s_mask[:, :, col] = torch.from_numpy(s)
+    return s_mask
+  
+
+  @staticmethod
+  def wave_mix(x: torch.Tensor, y: torch.Tensor, rates: List[float], wavelet: str = 'db1', level: int = 2, dim: int = 1) -> torch.Tensor:
       """
         Mix two input signals using wavelet transformation.
 
@@ -147,30 +151,36 @@ class augmentation():
       """
 
       xy = torch.cat([x,y], dim = 1)
-      b_idx = np.arange(x.shape[0])
-      np.random.shuffle(b_idx)
+      batch_size, seq_len, num_features = xy.shape
+      
+      b_idx = torch.randperm(batch_size)
+      xy2 = torch.cat([x[b_idx], y[b_idx]], dim=dim)
       x2, y2 = x[b_idx], y[b_idx]
       xy2 = torch.cat([x2,y2],dim=dim)
-      s_list = []
-      for col in range(xy.shape[-1]):
-        S = []
+
+      s_mixed = torch.empty((batch_size, seq_len, num_features), dtype=torch.float32)
+
+      for col in range(num_features):
         coeffs_1 = pywt.wavedec(xy[:,:, col], wavelet = wavelet, mode='symmetric', level=level)
         coeffs_2 = pywt.wavedec(xy2[:,:, col], wavelet = wavelet, mode='symmetric', level=level)
-        for i in range(level + 1):
-          coeffs_tensor_1 = torch.FloatTensor(coeffs_1[i]) 
-          coeffs_tensor_2 = torch.FloatTensor(coeffs_2[i])  
-          m1 = coeffs_tensor_1.uniform_() < rates[i]
-          m2 = torch.bitwise_not(m1)
-          C1 = coeffs_tensor_1.masked_fill(m1, 0)
-          C2 = coeffs_tensor_2.masked_fill(m2, 0)
-          C = C1 + C2
-          S.append(C.numpy())
-        s = pywt.waverec(S, wavelet = wavelet, mode='symmetric')
-        s_list.append(torch.from_numpy(s[:, :, None]))
-      return torch.cat(s_list, dim=-1)
+        coeffs_tensors_1 = [torch.FloatTensor(c) for c in coeffs_1]
+        coeffs_tensors_2 = [torch.FloatTensor(c) for c in coeffs_2]
+        masks = [torch.rand(c.shape) < rate for c, rate in zip(coeffs_tensors_1, rates)]
+
+        mixed_coeffs = [
+            c1.masked_fill(m, 0) + c2.masked_fill(~m, 0)
+            for c1, c2, m in zip(coeffs_tensors_1, coeffs_tensors_2, masks)
+        ]
+
+        S = [c.numpy() for c in mixed_coeffs]
+
+        s = pywt.waverec(S, wavelet=wavelet, mode='symmetric')
+        s_mixed[:, :, col] = torch.from_numpy(s)
+    
+      return s_mixed
 
   # StAug: frequency-domain augmentation 
-  def emd_aug(self, x):
+  def emd_aug(self, x: torch.Tensor) -> torch.Tensor:
       """
         Apply augmentation on empirical mode decomposition (EMD).
 
@@ -194,7 +204,7 @@ class augmentation():
       return out
 
 # StAug: time-domain augmentation
-  def mix_aug(self, batch_x, batch_y, lambd = 0.5):
+  def mix_aug(self, batch_x: np.ndarray, batch_y: np.ndarray, lambd: float = 0.5) -> Tuple[np.ndarray, np.ndarray]:
       """
         Mix two batches of data with a random interpolation factor.
 
