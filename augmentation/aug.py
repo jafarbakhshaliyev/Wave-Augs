@@ -124,13 +124,16 @@ class augmentation():
 
     for col in range(num_features):
       coeffs = pywt.wavedec(xy[:,:, col], wavelet = wavelet, mode='symmetric', level=level)
-      coeffs_tensors = [torch.FloatTensor(c) for c in coeffs]
-      masks = [torch.rand(c.shape) < rate for c, rate in zip(coeffs_tensors, rates)]
-      masked_coeffs = [c.masked_fill(m, 0) for c, m in zip(coeffs_tensors, masks)]
-      S = [c.numpy() for c in masked_coeffs]
+      S = []
+      for i in range(level + 1):
+        coeffs_tensor = torch.FloatTensor(coeffs[i]) 
+        m = coeffs_tensor.uniform_() < torch.FloatTensor(rates[i])
+        C = coeffs_tensor.masked_fill(m, 0)
+        S.append(C.numpy())
       s = pywt.waverec(S, wavelet=wavelet, mode='symmetric')
       s_mask[:, :, col] = torch.from_numpy(s)
     return s_mask
+  
   
 
   @staticmethod
@@ -152,9 +155,9 @@ class augmentation():
 
       xy = torch.cat([x,y], dim = 1)
       batch_size, seq_len, num_features = xy.shape
-      
-      b_idx = torch.randperm(batch_size)
-      xy2 = torch.cat([x[b_idx], y[b_idx]], dim=dim)
+
+      b_idx = np.arange(x.shape[0])
+      np.random.shuffle(b_idx)
       x2, y2 = x[b_idx], y[b_idx]
       xy2 = torch.cat([x2,y2],dim=dim)
 
@@ -163,20 +166,19 @@ class augmentation():
       for col in range(num_features):
         coeffs_1 = pywt.wavedec(xy[:,:, col], wavelet = wavelet, mode='symmetric', level=level)
         coeffs_2 = pywt.wavedec(xy2[:,:, col], wavelet = wavelet, mode='symmetric', level=level)
-        coeffs_tensors_1 = [torch.FloatTensor(c) for c in coeffs_1]
-        coeffs_tensors_2 = [torch.FloatTensor(c) for c in coeffs_2]
-        masks = [torch.rand(c.shape) < rate for c, rate in zip(coeffs_tensors_1, rates)]
-
-        mixed_coeffs = [
-            c1.masked_fill(m, 0) + c2.masked_fill(~m, 0)
-            for c1, c2, m in zip(coeffs_tensors_1, coeffs_tensors_2, masks)
-        ]
-
-        S = [c.numpy() for c in mixed_coeffs]
+        S = []
+        for i in range(level + 1):
+          coeffs_tensor_1 = torch.FloatTensor(coeffs_1[i]) 
+          coeffs_tensor_2 = torch.FloatTensor(coeffs_2[i])
+          m1 = coeffs_tensor_1.uniform_() < torch.FloatTensor(rates[i])
+          m2 = torch.bitwise_not(m1)
+          C1 = coeffs_tensor_1.masked_fill(m1, 0)
+          C2 = coeffs_tensor_2.masked_fill(m2, 0)
+          C = C1 + C2
+          S.append(C.numpy())
 
         s = pywt.waverec(S, wavelet=wavelet, mode='symmetric')
         s_mixed[:, :, col] = torch.from_numpy(s)
-    
       return s_mixed
 
   # StAug: frequency-domain augmentation 
