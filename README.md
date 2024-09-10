@@ -1,4 +1,4 @@
-# Wave-Mask/Mix: Exploring Wavelet-Based Augmentations for Time Series Forecasting <a href="https://www.arxiv.org/abs/2408.10951" title="Read the paper on arXiv"><img src="https://img.shields.io/badge/arXiv-2304.12345-b31b1b.svg" margin-left="5px" height="20" align="center"></a>
+# Wave-Mask/Mix: Exploring Wavelet-Based Augmentations for Time Series Forecasting <a href="https://www.arxiv.org/abs/2408.10951" title="Read the paper on arXiv"><img src="https://img.shields.io/badge/arXiv-2408.10951-b31b1b.svg" margin-left="5px" height="20" align="center"></a>
 
 <a href="https://www.arxiv.org/abs/2408.10951" style="color: #4285F4; font-size: 24px; font-weight: bold; text-decoration: none;">Paper(arXiv)</a>
 
