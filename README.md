@@ -1,4 +1,6 @@
-# WaveMask & WaveMix
+# Wave-Mask/Mix: Exploring Wavelet-Based Augmentations for Time Series Forecasting <a href="https://www.arxiv.org/abs/2408.10951" title="Read the paper on arXiv"><img src="https://img.shields.io/badge/arXiv-2304.12345-b31b1b.svg" margin-left="5px" height="20" align="center"></a>
+
+<a href="https://www.arxiv.org/abs/2408.10951" style="color: #4285F4; font-size: 24px; font-weight: bold; text-decoration: none;">Paper(arXiv)</a>
 
 The figure depicts a framework of the training stages incorporating wavelet augmentations, which involve the concatenation of
 the look-back window and the forecasting horizon prior to transformation and augmentation. Batch sampling of the generated synthetic data is conducted according to a predefined hyperparameter called the sampling rate. These batches are subsequently used to split the data into the look-back window and target horizon, after which they are concatenated with the original data. Wavelet augmentations are Wavelet Masking (WaveMask) and Wavelet Mixing (WaveMix). These techniques utilize the discrete wavelet transform (DWT) to obtain wavelet coefficients (both approximation and detail coefficients) by breaking down the signal and adjusting these coefficients, in line with modifying frequency components across different time scales. 
@@ -73,7 +75,7 @@ You can change ```percentage``` to down-sample training dataset for ablation stu
 If you find the code useful, please cite our paper:
 
 ```
-@misc{arabi2024wavemaskmixexploringwaveletbasedaugmentations,
+@misc{waveaug2024,
       title={Wave-Mask/Mix: Exploring Wavelet-Based Augmentations for Time Series Forecasting}, 
       author={Dona Arabi and Jafar Bakhshaliyev and Ayse Coskuner and Kiran Madhusudhanan and Kami Serdar Uckardes},
       year={2024},
