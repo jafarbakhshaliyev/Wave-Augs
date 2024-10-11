@@ -146,6 +146,8 @@ class Exp_Main(Exp_Basic):
                 iter_count += 1
                 model_optim.zero_grad()
                 aug_data = aug_data.float().to(self.device)
+                batch_x = batch_x.float().to(self.device)
+                batch_y = batch_y.float().to(self.device)
 
                 if self.args.aug_type:
                   aug = augmentation()

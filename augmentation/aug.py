@@ -10,6 +10,7 @@
 import numpy as np
 import torch
 import pywt
+from pytorch_wavelets import DWT1DForward, DWT1DInverse
 from typing import List, Tuple
 
 class augmentation():
@@ -100,39 +101,53 @@ class augmentation():
     xy = torch.fft.irfft(xy_f,dim=dim)
 
     return xy
-
+  
+  
   @staticmethod
   def wave_mask(x: torch.Tensor, y: torch.Tensor, rates: List[float], wavelet: str = 'db1', level: int = 2, dim: int= 1) -> torch.Tensor:
-    """
-        Apply wavelet-based masking to input data.
+      """
+          Apply wavelet-based masking to input data.
 
-        Args:
-        - x (torch.Tensor): Look-back window.
-        - y (torch.Tensor): Target horizon.
-        - rates (list of floats): List of mask rates for each wavelet level.
-        - wavelet (str): Type of wavelet to use.
-        - level (int): Number of decomposition levels.
-        - dim (int): Dimension along to concatenate and apply Discrete Wavelet Transform.
+          Args:
+          - x (torch.Tensor): Look-back window.
+          - y (torch.Tensor): Target horizon.
+          - rates (list of floats): List of mask rates for each wavelet level.
+          - wavelet (str): Type of wavelet to use.
+          - level (int): Number of decomposition levels.
+          - dim (int): Dimension along which to concatenate and apply DWT.
 
-        Returns:
-        - torch.Tensor: Masked synthetic data tensor.
-    """
+          Returns:
+          - torch.Tensor: Masked synthetic data tensor.
+      """
 
-    xy = torch.cat([x,y],dim=1)
-    batch_size, seq_len, num_features = xy.shape
-    s_mask = torch.empty((batch_size, seq_len, num_features), dtype=torch.float32)
+      xy = torch.cat([x, y], dim=1)  # Concatenate along the time dimension
+      rate_tensor = torch.tensor(rates, device=x.device) # Convert rates to tensor
 
-    for col in range(num_features):
-      coeffs = pywt.wavedec(xy[:,:, col], wavelet = wavelet, mode='symmetric', level=level)
-      S = []
-      for i in range(level + 1):
-        coeffs_tensor = torch.FloatTensor(coeffs[i]) 
-        m = coeffs_tensor.uniform_() < torch.FloatTensor(rates[i])
-        C = coeffs_tensor.masked_fill(m, 0)
-        S.append(C.numpy())
-      s = pywt.waverec(S, wavelet=wavelet, mode='symmetric')
-      s_mask[:, :, col] = torch.from_numpy(s)
-    return s_mask
+      # Permute dimensions to match expected input: (batch_size, num_features, seq_len)
+      xy = xy.permute(0, 2, 1).to(x.device)
+
+      # Initialize & perform the DWT
+      dwt = DWT1DForward(J=level, wave=wavelet, mode='symmetric').to(x.device)
+      cA, cDs = dwt(xy)
+
+      mask = torch.rand_like(cA).to(cA.device) < rate_tensor[0]
+      cA = cA.masked_fill(mask, 0)
+
+      # Apply masking to detail coefficients
+      masked_cDs = []
+      for i, cD in enumerate(cDs):
+          mask_cD = torch.rand_like(cD).to(cD.device) < rate_tensor[i]  # Create mask
+          cD = cD.masked_fill(mask_cD, 0)
+          masked_cDs.append(cD)
+
+      # Initialize the inverse DWT & reconstruct the signal
+      idwt = DWT1DInverse(wave=wavelet, mode='symmetric').to(x.device)
+      reconstructed = idwt((cA, masked_cDs))
+
+      # Permute back to original shape: (batch_size, seq_len, num_features)
+      reconstructed = reconstructed.permute(0, 2, 1)
+
+      return reconstructed
   
   
 

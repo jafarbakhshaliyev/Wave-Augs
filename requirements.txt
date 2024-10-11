@@ -7,3 +7,4 @@ einops
 pywavelets
 EMD-signal
 tensorflow==2.11.0
+pytorch_wavelets
