@@ -149,52 +149,58 @@ class augmentation():
 
       return reconstructed
   
-  
-
   @staticmethod
   def wave_mix(x: torch.Tensor, y: torch.Tensor, rates: List[float], wavelet: str = 'db1', level: int = 2, dim: int = 1) -> torch.Tensor:
       """
-        Mix two input signals using wavelet transformation.
+          Mix two input signals using wavelet transformation.
 
-        Args:
-        - x (torch.Tensor): Look-back window.
-        - y (torch.Tensor): Target horizon.
-        - rates (list of floats): List of mix rates for each wavelet level.
-        - wavelet (str): Type of wavelet to use.
-        - level (int): Number of decomposition levels.
-        - dim (int): Dimension along to concatenate and apply Discrete Wavelet Transform.
+          Args:
+          - x (torch.Tensor): Look-back window.
+          - y (torch.Tensor): Target horizon.
+          - rates (list of floats): List of mix rates for each wavelet level.
+          - wavelet (str): Type of wavelet to use.
+          - level (int): Number of decomposition levels.
+          - dim (int): Dimension along which to concatenate and apply DWT.
 
-        Returns:
-        - torch.Tensor: Mixed synthetic data tensor.
+          Returns:
+          - torch.Tensor: Mixed synthetic data tensor.
       """
 
-      xy = torch.cat([x,y], dim = 1)
-      batch_size, seq_len, num_features = xy.shape
+      xy = torch.cat([x, y], dim=1)  # Concatenate along the time dimension
+      batch_size, _, _ = xy.shape
+      rate_tensor = torch.tensor(rates, device=x.device) # Convert rates to tensor
 
-      b_idx = np.arange(x.shape[0])
-      np.random.shuffle(b_idx)
-      x2, y2 = x[b_idx], y[b_idx]
-      xy2 = torch.cat([x2,y2],dim=dim)
+      # Permute dimensions to match expected input: (batch_size, num_features, seq_len)
+      xy = xy.permute(0, 2, 1).to(x.device)
 
-      s_mixed = torch.empty((batch_size, seq_len, num_features), dtype=torch.float32)
+      # Shuffle the batch for mixing
+      b_idx = torch.randperm(batch_size)
+      xy2 = xy[b_idx]
 
-      for col in range(num_features):
-        coeffs_1 = pywt.wavedec(xy[:,:, col], wavelet = wavelet, mode='symmetric', level=level)
-        coeffs_2 = pywt.wavedec(xy2[:,:, col], wavelet = wavelet, mode='symmetric', level=level)
-        S = []
-        for i in range(level + 1):
-          coeffs_tensor_1 = torch.FloatTensor(coeffs_1[i]) 
-          coeffs_tensor_2 = torch.FloatTensor(coeffs_2[i])
-          m1 = coeffs_tensor_1.uniform_() < torch.FloatTensor(rates[i])
-          m2 = torch.bitwise_not(m1)
-          C1 = coeffs_tensor_1.masked_fill(m1, 0)
-          C2 = coeffs_tensor_2.masked_fill(m2, 0)
-          C = C1 + C2
-          S.append(C.numpy())
+      # Initialize & perform the DWT on the both signals
+      dwt = DWT1DForward(J=level, wave=wavelet, mode='symmetric').to(x.device)
+      cA1, cDs1 = dwt(xy)
+      cA2, cDs2 = dwt(xy2)
 
-        s = pywt.waverec(S, wavelet=wavelet, mode='symmetric')
-        s_mixed[:, :, col] = torch.from_numpy(s)
-      return s_mixed
+      # Mix the approximation coefficients
+      mask = torch.rand_like(cA1).to(cA1.device) < rate_tensor[0] # Create mask
+      cA_mixed = cA1.masked_fill(mask, 0) + cA2.masked_fill(~mask, 0)
+
+      # Mix the coefficients
+      mixed_cDs = []
+      for i, (cD1, cD2) in enumerate(zip(cDs1, cDs2)):
+          mask = torch.rand_like(cD1).to(cD1.device) < rate_tensor[i] # Create mask
+          cD_mixed = cD1.masked_fill(mask, 0) + cD2.masked_fill(~mask, 0)
+          mixed_cDs.append(cD_mixed)
+
+      # Initialize the inverse DWT & reconstruct the signal
+      idwt = DWT1DInverse(wave=wavelet, mode='symmetric').to(x.device)
+      reconstructed = idwt((cA_mixed, mixed_cDs))
+
+      # Permute back to original shape: (batch_size, seq_len, num_features)
+      reconstructed = reconstructed.permute(0, 2, 1)
+
+      return reconstructed
 
   # StAug: frequency-domain augmentation 
   def emd_aug(self, x: torch.Tensor) -> torch.Tensor:
