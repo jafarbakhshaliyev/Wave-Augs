@@ -68,7 +68,7 @@ class Dataset_ETT_hour(Dataset):
         else:
             data = df_data.values
 
-        if self.set_type == 0:
+        if self.set_type == 0 and self.params.aug_type == 5:
             self.aug_data = emd_augment(data[border1:border2][-len(train_data):], self.seq_len+self.pred_len, n_IMF = self.n_imf)
         else: 
             self.aug_data = np.zeros_like(data[border1:border2])    
@@ -90,9 +90,11 @@ class Dataset_ETT_hour(Dataset):
         seq_x = self.data_x[s_begin:s_end]
         seq_y = self.data_y[r_begin:r_end]
 
-        aug_data = self.aug_data[s_begin]
-
-        return seq_x, seq_y, aug_data
+        if self.params.aug_type == 5:
+            aug_data = self.aug_data[s_begin]
+            return seq_x, seq_y, aug_data
+        else:
+            return seq_x, seq_y, None 
 
     def __len__(self):
         return len(self.data_x) - self.seq_len - self.pred_len + 1
@@ -156,7 +158,7 @@ class Dataset_ETT_minute(Dataset):
         else:
             data = df_data.values
 
-        if self.set_type == 0: 
+        if self.set_type == 0 and self.params.aug_type == 5:
             self.aug_data = emd_augment(data[border1:border2][-len(train_data):], self.seq_len+self.pred_len, n_IMF = self.n_imf)
         else: 
             self.aug_data = np.zeros_like(data[border1:border2])
@@ -177,10 +179,12 @@ class Dataset_ETT_minute(Dataset):
         seq_x = self.data_x[s_begin:s_end]
         seq_y = self.data_y[r_begin:r_end]
 
-        aug_data = self.aug_data[s_begin]
-
-        return seq_x, seq_y, aug_data
-
+        if self.params.aug_type == 5:
+            aug_data = self.aug_data[s_begin]
+            return seq_x, seq_y, aug_data
+        else:
+            return seq_x, seq_y, None 
+        
     def __len__(self):
         return len(self.data_x) - self.seq_len - self.pred_len + 1
 
@@ -251,7 +255,7 @@ class Dataset_Custom(Dataset):
         else:
             data = df_data.values
 
-        if self.set_type == 0: 
+        if self.set_type == 0 and self.params.aug_type == 5:
             self.aug_data = emd_augment(data[border1:border2][-len(train_data):], self.seq_len+self.pred_len, n_IMF = self.n_imf)
         
         else: 
@@ -272,9 +276,12 @@ class Dataset_Custom(Dataset):
 
         seq_x = self.data_x[s_begin:s_end] 
         seq_y = self.data_y[r_begin:r_end] 
-        aug_data = self.aug_data[s_begin]
 
-        return seq_x, seq_y, aug_data
+        if self.params.aug_type == 5:
+            aug_data = self.aug_data[s_begin]
+            return seq_x, seq_y, aug_data
+        else:
+            return seq_x, seq_y, None 
 
     def __len__(self):
         return len(self.data_x) - self.seq_len - self.pred_len + 1
@@ -356,7 +363,7 @@ class Dataset_Pred(Dataset):
         else:
             seq_y = self.data_y[r_begin:r_begin + self.label_len]
 
-        return seq_x, seq_y
+        return seq_x, seq_y, None 
 
     def __len__(self):
         return len(self.data_x) - self.seq_len + 1
@@ -390,7 +397,7 @@ def data_provider(args, flag):
         freq = args.freq
         Data = Dataset_Pred
     else:
-        shuffle_flag = False
+        shuffle_flag = True
         drop_last = True
         batch_size = args.batch_size
         freq = args.freq

@@ -141,11 +141,16 @@ class Exp_Main(Exp_Basic):
             self.model.train()
             epoch_time = time.time()
 
+    
             for i, (batch_x, batch_y, aug_data) in enumerate(train_loader):
+
 
                 iter_count += 1
                 model_optim.zero_grad()
-                aug_data = aug_data.float().to(self.device)
+                if self.args.aug_type == 5:
+                    aug_data = aug_data.float().to(self.device)
+                else:
+                    aug_data = None
                 batch_x = batch_x.float().to(self.device)
                 batch_y = batch_y.float().to(self.device)
 
