@@ -92,9 +92,10 @@ class Dataset_ETT_hour(Dataset):
 
         if self.params.aug_type == 5:
             aug_data = self.aug_data[s_begin]
-            return seq_x, seq_y, aug_data
         else:
-            return seq_x, seq_y, None 
+            aug_data = np.array([])
+            
+        return seq_x, seq_y, aug_data
 
     def __len__(self):
         return len(self.data_x) - self.seq_len - self.pred_len + 1
@@ -181,9 +182,10 @@ class Dataset_ETT_minute(Dataset):
 
         if self.params.aug_type == 5:
             aug_data = self.aug_data[s_begin]
-            return seq_x, seq_y, aug_data
         else:
-            return seq_x, seq_y, None 
+            aug_data = np.array([])
+
+        return seq_x, seq_y, aug_data
         
     def __len__(self):
         return len(self.data_x) - self.seq_len - self.pred_len + 1
@@ -279,9 +281,10 @@ class Dataset_Custom(Dataset):
 
         if self.params.aug_type == 5:
             aug_data = self.aug_data[s_begin]
-            return seq_x, seq_y, aug_data
         else:
-            return seq_x, seq_y, None 
+            aug_data = np.array([])
+        
+        return seq_x, seq_y, aug_data
 
     def __len__(self):
         return len(self.data_x) - self.seq_len - self.pred_len + 1
@@ -363,7 +366,10 @@ class Dataset_Pred(Dataset):
         else:
             seq_y = self.data_y[r_begin:r_begin + self.label_len]
 
-        return seq_x, seq_y, None 
+        aug_data = np.array([])
+
+        return seq_x, seq_y, aug_data
+
 
     def __len__(self):
         return len(self.data_x) - self.seq_len + 1
