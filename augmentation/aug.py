@@ -135,7 +135,7 @@ class augmentation():
 
       # Apply masking to detail coefficients
       masked_cDs = []
-      for i, cD in enumerate(cDs):
+      for i, cD in enumerate(cDs, 1):
           mask_cD = torch.rand_like(cD).to(cD.device) < rate_tensor[i]  # Create mask
           cD = cD.masked_fill(mask_cD, 0)
           masked_cDs.append(cD)
@@ -188,7 +188,7 @@ class augmentation():
 
       # Mix the coefficients
       mixed_cDs = []
-      for i, (cD1, cD2) in enumerate(zip(cDs1, cDs2)):
+      for i, (cD1, cD2) in enumerate(zip(cDs1, cDs2), 1):
           mask = torch.rand_like(cD1).to(cD1.device) < rate_tensor[i] # Create mask
           cD_mixed = cD1.masked_fill(mask, 0) + cD2.masked_fill(~mask, 0)
           mixed_cDs.append(cD_mixed)
