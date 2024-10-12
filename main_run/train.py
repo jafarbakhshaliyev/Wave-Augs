@@ -151,9 +151,7 @@ class Exp_Main(Exp_Basic):
                     aug_data = aug_data.float().to(self.device)
                 else:
                     aug_data = None
-                batch_x = batch_x.float().to(self.device)
-                batch_y = batch_y.float().to(self.device)
-
+                
                 if self.args.aug_type:
                   aug = augmentation()
                   if self.args.aug_type == 1:
@@ -176,6 +174,8 @@ class Exp_Main(Exp_Basic):
                     batch_x = torch.cat([batch_x,batch_x2],dim=0)
                     batch_y = torch.cat([batch_y,batch_y2],dim=0)
                   elif self.args.aug_type == 4:
+                    batch_x = batch_x.float().to(self.device)
+                    batch_y = batch_y.float().to(self.device)
                     xy = aug.wave_mix(batch_x, batch_y[:, -self.args.pred_len:, :] ,rates = self.args.rates, wavelet = self.args.wavelet, level = self.args.level, dim = 1)
                     batch_x2, batch_y2 = xy[:, :self.args.seq_len, :], xy[:, -self.args.label_len-self.args.pred_len:, :]
                     sampling_steps = int(batch_x2.shape[0] * self.args.sampling_rate)
@@ -185,6 +185,8 @@ class Exp_Main(Exp_Basic):
                     batch_x = torch.cat([batch_x,batch_x2],dim=0)
                     batch_y = torch.cat([batch_y,batch_y2],dim=0)
                   elif self.args.aug_type == 5:
+                    batch_x = batch_x.float().to(self.device)
+                    batch_y = batch_y.float().to(self.device)
                     weighted_xy = aug.emd_aug(aug_data)
                     weighted_x, weighted_y = weighted_xy[:,:self.args.seq_len,:], weighted_xy[:,-self.args.label_len-self.args.pred_len:,:]
                     batch_x, batch_y = aug.mix_aug(weighted_x, weighted_y, lambd = self.args.aug_rate)
